@@ -168,6 +168,7 @@
     <div id="map"></div>
     <div id="help-overlay">
       Keys: <b>G</b> toggle follow<br/>
+      Click red dot to show track<br/>
       Data via MQTT over WebSocket
     </div>
   </div>
@@ -202,6 +203,49 @@
     direction: 'right',
     className: 'aircraft-label'
   }).setLatLng(airportCoords).addTo(map);
+
+  // ========= Track line (history) =========
+  var trackPoints = [];    // list of [lat, lon]
+  var trackLine = null;    // Leaflet polyline
+
+  function addTrackPoint(lat, lon) {
+    if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) return;
+
+    // Avoid adding identical consecutive points
+    if (
+      trackPoints.length === 0 ||
+      trackPoints[trackPoints.length - 1][0] !== lat ||
+      trackPoints[trackPoints.length - 1][1] !== lon
+    ) {
+      trackPoints.push([lat, lon]);
+
+      // If the polyline is currently visible, update it live
+      if (trackLine) {
+        trackLine.setLatLngs(trackPoints);
+      }
+    }
+  }
+
+  // Click on the red dot toggles the full flown track, FR24-style
+  dot.on('click', function () {
+    if (!trackPoints.length) return;
+
+    if (trackLine) {
+      // Hide track
+      map.removeLayer(trackLine);
+      trackLine = null;
+    } else {
+      // Show track
+      trackLine = L.polyline(trackPoints, {
+        color: 'yellow',
+        weight: 3
+      }).addTo(map);
+
+      // Optionally zoom to fit the whole flown path
+      map.fitBounds(trackLine.getBounds(), { padding: [20, 20] });
+    }
+  });
+  // ======================================
 
   function updateLabel(showReg, showSpd, showAlt, showHdg, showTemp,
                        speed, alt, hdg, tempC) {
@@ -437,6 +481,10 @@
 
       if (has_gps && lat !== null && lon !== null) {
         setAircraft(lat, lon);
+
+        // Add this point to the historical track
+        addTrackPoint(lat, lon);
+
         if (followEnabled) {
           map.panTo([lat, lon]);
         }
@@ -457,7 +505,3 @@
 </script>
 </body>
 </html>
-
-
-
-
