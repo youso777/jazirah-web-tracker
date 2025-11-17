@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <title>Jazirah Club Traffic - OMRJ V2.0</title>
 
-  <!-- IMPORTANT for mobile layout -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
@@ -29,7 +26,7 @@
       width: 100%;
     }
 
-    /* Left menu (desktop layout) */
+    /* Left menu */
     #sidebar {
       width: 250px;
       background-color: #2a2a2a;
@@ -37,7 +34,6 @@
       flex-direction: column;
       padding: 5px;
       box-sizing: border-box;
-      z-index: 10; /* for safety */
     }
 
     #sidebar .logo {
@@ -104,11 +100,12 @@
       background: #000; /* helps hide white seams between tiles */
     }
 
+    /* Also ensure leaflet container is dark behind tiles */
     .leaflet-container {
       background: #000;
     }
 
-    /* Tooltip style */
+    /* Leaflet tooltip style (same as PyQt HTML) */
     .leaflet-tooltip.aircraft-label {
       background: rgba(0,0,0,0.8);
       padding: 4px 6px;
@@ -119,6 +116,7 @@
       text-align: center;
       line-height: 1.4;
     }
+
     .aircraft-label .id {
       display: block;
       font-weight: bold;
@@ -136,78 +134,12 @@
       padding: 6px 8px;
       font-size: 11px;
       border-radius: 4px;
-      z-index: 50;
-    }
-
-    /* ========= MOBILE LAYOUT (FR24-style bottom panel) ========= */
-    @media (max-width: 768px) {
-      html, body {
-        height: 100%;
-        overflow: hidden;
-      }
-
-      #app {
-        position: relative;
-        height: 100%;
-        width: 100%;
-      }
-
-      /* Map takes full screen */
-      #map-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-      }
-
-      /* Sidebar becomes floating bottom panel, centered */
-      #sidebar {
-        position: absolute;
-        left: 50%;
-        bottom: 0;
-        transform: translateX(-50%);
-        width: 95%;
-        max-width: 480px;
-        max-height: 45%;
-        height: auto;
-
-        background-color: rgba(20, 20, 20, 0.96);
-        border-radius: 12px 12px 0 0;
-        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.7);
-        padding: 8px 10px;
-        overflow-y: auto;
-      }
-
-      #sidebar .logo img {
-        max-width: 180px;
-        max-height: 60px;
-      }
-
-      #sidebar h3 {
-        margin-top: 6px;
-        margin-bottom: 4px;
-        font-size: 13px;
-      }
-
-      #sidebar label {
-        font-size: 12px;
-      }
-
-      #status-text {
-        font-size: 13px;
-      }
-
-      #footer {
-        font-size: 9px;
-        padding-top: 6px;
-      }
     }
   </style>
 </head>
 <body>
 <div id="app">
-  <!-- Sidebar (desktop: left, mobile: bottom overlay) -->
+  <!-- Sidebar -->
   <div id="sidebar">
     <div class="logo">
       <img src="jazirah-club.png" alt="Jazirah Club">
@@ -227,7 +159,9 @@
     <label><input type="checkbox" id="show-alt" checked> Altitude</label>
     <label><input type="checkbox" id="show-hdg" checked> Heading</label>
     <label><input type="checkbox" id="show-temp" checked> Temperature</label>
+    <!-- Follow-Me checkbox -->
     <label><input type="checkbox" id="follow-me"> Follow-Me</label>
+    <!-- Line Tracking checkbox -->
     <label><input type="checkbox" id="show-track"> Line Tracking</label>
 
     <!-- Status -->
@@ -250,11 +184,13 @@
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-<!-- MQTT.js -->
+
+<!-- MQTT.js (browser) -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <script>
   // ========= Map setup =========
+  // OMRJ coords
   var airportCoords = [25.6646, 55.7749];
   var map = L.map('map').setView(airportCoords, 16);
 
@@ -277,13 +213,14 @@
   }).setLatLng(airportCoords).addTo(map);
 
   // ========= Track line (history) =========
-  var trackPoints = [];
-  var trackLine = null;
+  var trackPoints = []; // list of [lat, lon]
+  var trackLine = null; // Leaflet polyline
 
   function updateTrackVisibility() {
     if (!showTrackBox) return;
 
     if (showTrackBox.checked && trackPoints.length > 0) {
+      // Show or create the track
       if (!trackLine) {
         trackLine = L.polyline(trackPoints, {
           color: 'yellow',
@@ -293,6 +230,7 @@
         map.addLayer(trackLine);
       }
     } else {
+      // Hide the track
       if (trackLine && map.hasLayer(trackLine)) {
         map.removeLayer(trackLine);
       }
@@ -302,6 +240,7 @@
   function addTrackPoint(lat, lon) {
     if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) return;
 
+    // Avoid adding identical consecutive points
     if (
       trackPoints.length === 0 ||
       trackPoints[trackPoints.length - 1][0] !== lat ||
@@ -309,6 +248,7 @@
     ) {
       trackPoints.push([lat, lon]);
 
+      // If track is visible, update it
       if (trackLine && showTrackBox && showTrackBox.checked) {
         trackLine.setLatLngs(trackPoints);
       }
@@ -320,13 +260,17 @@
     if (!showTrackBox) return;
     if (!trackPoints.length) return;
 
+    // Toggle checkbox
     showTrackBox.checked = !showTrackBox.checked;
     updateTrackVisibility();
 
+    // If we just enabled it, zoom to path
     if (showTrackBox.checked && trackLine) {
       map.fitBounds(trackLine.getBounds(), { padding: [20, 20] });
     }
   });
+
+  // ======================================
 
   function updateLabel(showReg, showSpd, showAlt, showHdg, showTemp,
                        speed, alt, hdg, tempC) {
@@ -334,6 +278,7 @@
       if (v === null || v === undefined || isNaN(v)) return '—';
       return v + (suffix || '');
     }
+
     let content = '';
     if (showReg) {
       content += '<span class="id">A6-FOR</span>';
@@ -369,14 +314,14 @@
   }
 
   // ========= Telemetry + UI state =========
-  let lastHeading = null;
+  let lastHeading  = null;
   let lastPressure = null;
-  let lastTempC = null;
-  let lastSpeed = null;
-  let lastHasGPS = false;
-  let lastLat = null;
-  let lastLon = null;
-  let lastRxTime = 0;
+  let lastTempC    = null;
+  let lastSpeed    = null;
+  let lastHasGPS   = false;
+  let lastLat      = null;
+  let lastLon      = null;
+  let lastRxTime   = 0;
 
   let followEnabled = false;
 
@@ -391,6 +336,7 @@
   const statusText   = document.getElementById('status-text');
 
   function altitudeFromPressure(p_hpa, qnh_hpa) {
+    // Same formula as your Python: 44330*(1-(p/qnh)^0.1903) in meters, then ft
     if (!p_hpa || !qnh_hpa || p_hpa <= 0 || qnh_hpa <= 0) return null;
     const alt_m = 44330.0 * (1.0 - Math.pow(p_hpa / qnh_hpa, 0.1903));
     const alt_ft = alt_m * 3.28084;
@@ -409,11 +355,11 @@
     const showHdg  = showHdgBox.checked;
     const showTemp = showTempBox.checked;
 
-    const jsSpeed = (lastSpeed === null || lastSpeed === undefined) ? null : Math.round(lastSpeed);
-    const jsAlt   = (altFt === null || altFt === undefined) ? null : Math.round(altFt);
+    const jsSpeed = (lastSpeed   === null || lastSpeed   === undefined) ? null : Math.round(lastSpeed);
+    const jsAlt   = (altFt       === null || altFt       === undefined) ? null : Math.round(altFt);
     const jsHdg   = (lastHeading === null || lastHeading === undefined)
                     ? null : (Math.round(lastHeading) % 360);
-    const jsTemp  = (lastTempC === null || lastTempC === undefined) ? null : Math.round(lastTempC);
+    const jsTemp  = (lastTempC   === null || lastTempC   === undefined) ? null : Math.round(lastTempC);
 
     updateLabel(showReg, showSpd, showAlt, showHdg, showTemp,
                 jsSpeed, jsAlt, jsHdg, jsTemp);
@@ -422,31 +368,35 @@
   // Watch UI changes
   qnhInput.addEventListener('input', redrawLabel);
   [showRegBox, showSpdBox, showAltBox, showHdgBox, showTempBox]
-    .forEach(el => {
-      el.addEventListener('change', redrawLabel);
-    });
+    .forEach(el => el.addEventListener('change', redrawLabel));
 
+  // Follow-Me checkbox logic
   followMeBox.addEventListener('change', () => {
     followEnabled = followMeBox.checked;
 
+    // If we have GPS and follow is turned on, immediately pan once
     if (followEnabled && lastHasGPS && lastLat !== null && lastLon !== null) {
       map.panTo([lastLat, lastLon]);
     }
 
+    // Update status text same way as 'G' key does
     if (!statusText.textContent.startsWith('No Signal')) {
       statusText.textContent = 'Connected' + (followEnabled ? ' (Following)' : '');
       statusText.style.color = 'lime';
     }
   });
 
+  // Line Tracking checkbox logic
   showTrackBox.addEventListener('change', () => {
     updateTrackVisibility();
 
+    // If just enabled and we have a line, zoom to it
     if (showTrackBox.checked && trackLine) {
       map.fitBounds(trackLine.getBounds(), { padding: [20, 20] });
     }
   });
 
+  // Status updates (watchdog, same 2s timeout)
   setInterval(() => {
     const now = Date.now() / 1000;
     const silent = (now - lastRxTime) > 2.0;
@@ -458,9 +408,11 @@
     }
   }, 500);
 
+  // Keyboard shortcuts: only 'G' (follow) is practical in web
   window.addEventListener('keydown', (ev) => {
     if (ev.key === 'g' || ev.key === 'G') {
       followEnabled = !followEnabled;
+      // keep checkbox in sync
       followMeBox.checked = followEnabled;
 
       if (!statusText.textContent.startsWith('No Signal')) {
@@ -470,7 +422,7 @@
     }
   });
 
-  // ========= MQTT =========
+  // ========= MQTT over WebSocket (HiveMQ Cloud) =========
   const MQTT_URL   = "wss://1c23734948264e8cbc15a03ab2e7e8dc.s1.eu.hivemq.cloud:8884/mqtt";
   const MQTT_TOPIC = "aircraft/OMRJ/telemetry";
 
@@ -479,7 +431,7 @@
     password: "David@20071",
     clientId: "ground-station-web-" + Math.random().toString(16).slice(2, 10),
     clean: true,
-    reconnectPeriod: 2000,
+    reconnectPeriod: 2000, // ms
     keepalive: 30
   });
 
@@ -521,11 +473,16 @@
       console.log("[MQTT] msg:", topic, s);
       const parts = s.split(/\s+/);
 
-      let heading = null, tempC = null, press_hpa = null;
-      let lat = null, lon = null, speed_kph = null;
-      let has_gps = false;
+      let heading   = null;
+      let tempC     = null;
+      let press_hpa = null;
+      let lat       = null;
+      let lon       = null;
+      let speed_kph = null;
+      let has_gps   = false;
 
       if (parts.length === 6) {
+        // H T P LAT LON SPD  (same as PyQt)
         heading   = parseInt(parts[0], 10);
         tempC     = parseInt(parts[1], 10);
         press_hpa = parseFloat(parts[2]);
@@ -534,19 +491,21 @@
         speed_kph = parseInt(parts[5], 10);
         has_gps   = true;
       } else if (parts.length === 3) {
+        // H T P
         heading   = parseInt(parts[0], 10);
         tempC     = parseInt(parts[1], 10);
         press_hpa = parseFloat(parts[2]);
         has_gps   = false;
       } else {
+        // unknown format -> ignore
         return;
       }
 
-      if (isNaN(heading))   heading = null;
-      if (isNaN(tempC))     tempC = null;
+      if (isNaN(heading))   heading   = null;
+      if (isNaN(tempC))     tempC     = null;
       if (isNaN(press_hpa)) press_hpa = null;
-      if (isNaN(lat))       lat = null;
-      if (isNaN(lon))       lon = null;
+      if (isNaN(lat))       lat       = null;
+      if (isNaN(lon))       lon       = null;
       if (isNaN(speed_kph)) speed_kph = null;
 
       lastRxTime  = Date.now() / 1000;
@@ -560,6 +519,8 @@
 
       if (has_gps && lat !== null && lon !== null) {
         setAircraft(lat, lon);
+
+        // Add this point to the historical track
         addTrackPoint(lat, lon);
 
         if (followEnabled) {
@@ -567,9 +528,13 @@
         }
       }
 
+      // refresh label with new values
       redrawLabel();
+
+      // Update track if it's visible and we just got first points
       updateTrackVisibility();
 
+      // if we were in "No Signal", flip to "Connected"
       if (!statusText.textContent.startsWith("Connected")) {
         statusText.textContent = "Connected" + (followEnabled ? " (Following)" : "");
         statusText.style.color = "lime";
