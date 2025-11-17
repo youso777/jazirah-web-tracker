@@ -26,7 +26,7 @@
       width: 100%;
     }
 
-    /* Left menu */
+    /* Left menu (desktop layout) */
     #sidebar {
       width: 250px;
       background-color: #2a2a2a;
@@ -34,6 +34,7 @@
       flex-direction: column;
       padding: 5px;
       box-sizing: border-box;
+      z-index: 10; /* for safety */
     }
 
     #sidebar .logo {
@@ -133,12 +134,84 @@
       padding: 6px 8px;
       font-size: 11px;
       border-radius: 4px;
+      z-index: 50;
+    }
+
+    /* ========= MOBILE LAYOUT (FR24-style bottom panel) ========= */
+    @media (max-width: 768px) {
+      html, body {
+        height: 100%;
+        overflow: hidden; /* keep everything nicely contained */
+      }
+
+      #app {
+        position: relative;
+        height: 100%;
+        width: 100%;
+      }
+
+      /* Map takes the full screen behind */
+      #map-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+
+      /* Sidebar becomes floating bottom panel, centered */
+      #sidebar {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 95%;
+        max-width: 480px;
+        max-height: 45%;
+        height: auto;
+
+        background-color: rgba(20, 20, 20, 0.96); /* more glassy */
+        border-radius: 12px 12px 0 0;
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.7);
+        padding: 8px 10px;
+        overflow-y: auto;
+      }
+
+      #sidebar .logo img {
+        max-width: 180px;
+        max-height: 60px;
+      }
+
+      #sidebar h3 {
+        margin-top: 6px;
+        margin-bottom: 4px;
+        font-size: 13px;
+      }
+
+      #sidebar label {
+        font-size: 12px;
+      }
+
+      #status-text {
+        font-size: 13px;
+      }
+
+      #footer {
+        font-size: 9px;
+        padding-top: 6px;
+      }
+
+      /* Help overlay slightly higher to avoid sidebar */
+      #help-overlay {
+        top: 10px;
+        right: 10px;
+      }
     }
   </style>
 </head>
 <body>
 <div id="app">
-  <!-- Sidebar (matches your PyQt menu) -->
+  <!-- Sidebar (desktop: left, mobile: bottom overlay) -->
   <div id="sidebar">
     <div class="logo">
       <!-- Same filename & folder as your Python app -->
@@ -543,4 +616,3 @@
 </script>
 </body>
 </html>
-
