@@ -97,6 +97,12 @@
     #map {
       height: 100%;
       width: 100%;
+      background: #000; /* helps hide white seams between tiles */
+    }
+
+    /* Also ensure leaflet container is dark behind tiles */
+    .leaflet-container {
+      background: #000;
     }
 
     /* Leaflet tooltip style (same as PyQt HTML) */
@@ -153,8 +159,10 @@
     <label><input type="checkbox" id="show-alt" checked> Altitude</label>
     <label><input type="checkbox" id="show-hdg" checked> Heading</label>
     <label><input type="checkbox" id="show-temp" checked> Temperature</label>
-    <!-- NEW: Follow-Me checkbox -->
+    <!-- Follow-Me checkbox -->
     <label><input type="checkbox" id="follow-me"> Follow-Me</label>
+    <!-- Line Tracking checkbox -->
+    <label><input type="checkbox" id="show-track"> Line Tracking</label>
 
     <!-- Status -->
     <h3>Status</h3>
@@ -168,7 +176,7 @@
     <div id="map"></div>
     <div id="help-overlay">
       Keys: <b>G</b> toggle follow<br/>
-      Click red dot to show track<br/>
+      Click red dot or enable "Line Tracking"<br/>
       Data via MQTT over WebSocket
     </div>
   </div>
@@ -208,6 +216,27 @@
   var trackPoints = [];    // list of [lat, lon]
   var trackLine = null;    // Leaflet polyline
 
+  function updateTrackVisibility() {
+    if (!showTrackBox) return;
+
+    if (showTrackBox.checked && trackPoints.length > 0) {
+      // Show or create the track
+      if (!trackLine) {
+        trackLine = L.polyline(trackPoints, {
+          color: 'yellow',
+          weight: 3
+        }).addTo(map);
+      } else if (!map.hasLayer(trackLine)) {
+        map.addLayer(trackLine);
+      }
+    } else {
+      // Hide the track
+      if (trackLine && map.hasLayer(trackLine)) {
+        map.removeLayer(trackLine);
+      }
+    }
+  }
+
   function addTrackPoint(lat, lon) {
     if (lat === null || lon === null || isNaN(lat) || isNaN(lon)) return;
 
@@ -219,29 +248,24 @@
     ) {
       trackPoints.push([lat, lon]);
 
-      // If the polyline is currently visible, update it live
-      if (trackLine) {
+      // If track is visible, update it
+      if (trackLine && showTrackBox && showTrackBox.checked) {
         trackLine.setLatLngs(trackPoints);
       }
     }
   }
 
-  // Click on the red dot toggles the full flown track, FR24-style
+  // Clicking on the red dot toggles "Line Tracking"
   dot.on('click', function () {
+    if (!showTrackBox) return;
     if (!trackPoints.length) return;
 
-    if (trackLine) {
-      // Hide track
-      map.removeLayer(trackLine);
-      trackLine = null;
-    } else {
-      // Show track
-      trackLine = L.polyline(trackPoints, {
-        color: 'yellow',
-        weight: 3
-      }).addTo(map);
+    // Toggle checkbox
+    showTrackBox.checked = !showTrackBox.checked;
+    updateTrackVisibility();
 
-      // Optionally zoom to fit the whole flown path
+    // If we just enabled it, zoom to path
+    if (showTrackBox.checked && trackLine) {
       map.fitBounds(trackLine.getBounds(), { padding: [20, 20] });
     }
   });
@@ -306,7 +330,8 @@
   const showAltBox   = document.getElementById('show-alt');
   const showHdgBox   = document.getElementById('show-hdg');
   const showTempBox  = document.getElementById('show-temp');
-  const followMeBox  = document.getElementById('follow-me'); // NEW
+  const followMeBox  = document.getElementById('follow-me');
+  const showTrackBox = document.getElementById('show-track');
   const statusText   = document.getElementById('status-text');
 
   function altitudeFromPressure(p_hpa, qnh_hpa) {
@@ -346,7 +371,7 @@
       el.addEventListener('change', redrawLabel);
     });
 
-  // NEW: Follow-Me checkbox logic
+  // Follow-Me checkbox logic
   followMeBox.addEventListener('change', () => {
     followEnabled = followMeBox.checked;
 
@@ -359,6 +384,16 @@
     if (!statusText.textContent.startsWith('No Signal')) {
       statusText.textContent = 'Connected' + (followEnabled ? ' (Following)' : '');
       statusText.style.color = 'lime';
+    }
+  });
+
+  // Line Tracking checkbox logic
+  showTrackBox.addEventListener('change', () => {
+    updateTrackVisibility();
+
+    // If just enabled and we have a line, zoom to it
+    if (showTrackBox.checked && trackLine) {
+      map.fitBounds(trackLine.getBounds(), { padding: [20, 20] });
     }
   });
 
@@ -393,8 +428,8 @@
   const MQTT_TOPIC = "aircraft/OMRJ/telemetry";
 
   const client = mqtt.connect(MQTT_URL, {
-    username: "HTML1",        // same as Python (dangerous on public web!)
-    password: "David@20071",   // same as Python
+    username: "HTML1",
+    password: "David@20071",
     clientId: "ground-station-web-" + Math.random().toString(16).slice(2, 10),
     clean: true,
     reconnectPeriod: 2000, // ms
@@ -493,6 +528,9 @@
       // refresh label with new values
       redrawLabel();
 
+      // Update track if it's visible and we just got first points
+      updateTrackVisibility();
+
       // if we were in "No Signal", flip to "Connected"
       if (!statusText.textContent.startsWith("Connected")) {
         statusText.textContent = "Connected" + (followEnabled ? " (Following)" : "");
@@ -505,3 +543,4 @@
 </script>
 </body>
 </html>
+
