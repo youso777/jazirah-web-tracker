@@ -97,15 +97,14 @@
     #map {
       height: 100%;
       width: 100%;
-      background: #000; /* helps hide white seams between tiles */
+      background: #000;
     }
 
-    /* Also ensure leaflet container is dark behind tiles */
     .leaflet-container {
       background: #000;
     }
 
-    /* Leaflet tooltip style (same as PyQt HTML) */
+    /* Aircraft tooltip */
     .leaflet-tooltip.aircraft-label {
       background: rgba(0,0,0,0.8);
       padding: 4px 6px;
@@ -125,7 +124,7 @@
       margin-bottom: 2px;
     }
 
-    /* VRP marker: small cyan triangle + label */
+    /* VRP Triangle */
     .vrp-div-icon {
       background: transparent;
       border: none;
@@ -134,20 +133,22 @@
     .vrp-div-icon .vrp-triangle {
       width: 0;
       height: 0;
-      border-left: 6px solid transparent;
-      border-right: 6px solid transparent;
-      border-bottom: 10px solid #00ffff; /* cyan triangle */
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-bottom: 14px solid #00ffff;
     }
 
+    /* ★ Bigger VRP TEXT ★ */
     .leaflet-tooltip.vrp-label {
       background: rgba(0,0,0,0.7);
       border: none;
       color: #fff;
-      font-size: 11px;
-      padding: 2px 4px;
+      font-size: 14px;      /* bigger text */
+      font-weight: 600;     /* sharper */
+      padding: 3px 6px;     /* more readable */
     }
 
-    /* Small top-right instructions */
+    /* Help overlay */
     #help-overlay {
       position: absolute;
       top: 10px;
@@ -159,60 +160,54 @@
     }
   </style>
 </head>
+
 <body>
 <div id="app">
-  <!-- Sidebar -->
+
   <div id="sidebar">
     <div class="logo">
       <img src="jazirah-club.png" alt="Jazirah Club">
     </div>
 
-    <!-- QNH -->
     <h3>QNH Settings</h3>
     <label>
       QNH:
       <input type="text" id="qnh-input" value="1013.25">
     </label>
 
-    <!-- Display options -->
     <h3>Display Options</h3>
     <label><input type="checkbox" id="show-reg" checked> Registration</label>
     <label><input type="checkbox" id="show-spd" checked> Speed</label>
     <label><input type="checkbox" id="show-alt" checked> Altitude</label>
     <label><input type="checkbox" id="show-hdg" checked> Heading</label>
     <label><input type="checkbox" id="show-temp" checked> Temperature</label>
-    <!-- Follow-Me checkbox -->
     <label><input type="checkbox" id="follow-me"> Follow-Me</label>
-    <!-- Line Tracking checkbox -->
     <label><input type="checkbox" id="show-track"> Line Tracking</label>
 
-    <!-- Status -->
     <h3>Status</h3>
     <div id="status-text">No Signal</div>
 
     <div id="footer">Jazirah Club V2.0</div>
   </div>
 
-  <!-- Map -->
   <div id="map-container">
     <div id="map"></div>
     <div id="help-overlay">
       Keys: <b>G</b> toggle follow<br/>
-      Click red dot or enable "Line Tracking"<br/>
+      Click red dot to enable Line Tracking<br/>
       Data via MQTT over WebSocket
     </div>
   </div>
+
 </div>
 
-<!-- Leaflet JS -->
+<!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 
-<!-- MQTT.js (browser) -->
+<!-- MQTT -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <script>
-  // ========= Map setup =========
-  // OMRJ coords
   var airportCoords = [25.6646, 55.7749];
   var map = L.map('map').setView(airportCoords, 16);
 
@@ -221,24 +216,25 @@
     { attribution: '© Esri', maxZoom: 18 }
   ).addTo(map);
 
-const vrps = [
-  { name: 'Sham Village',          lat: 26.02806,  lon: 56.08639 },   // 26°01'41"N 56°05'11"E
-  { name: 'Saqr Port',             lat: 25.97500,  lon: 56.05667 },   // 25°58'30"N 56°03'24"E
-  { name: 'Al Rams',               lat: 25.88417,  lon: 56.01139 },   // 25°53'03"N 56°00'41"E
-  { name: 'Hilton Beach Hotel',    lat: 25.81444,  lon: 55.95778 },   // 25°48'52"N 55°57'28"E
-  { name: 'Clock Roundabout',      lat: 25.76583,  lon: 55.92000 },   // 25°45'57"N 55°55'12"E
-  { name: 'Al Cove Rotana',        lat: 25.73750,  lon: 55.88806 },   // 25°44'15"N 55°53'17"E
-  { name: 'Emirates Roundabout',   lat: 25.71833,  lon: 55.86139 },   // 25°43'06"N 55°51'41"E
-  { name: 'Al Jazirah Al Hamra',   lat: 25.70694,  lon: 55.80278 },   // 25°42'25"N 55°48'10"E
-  { name: 'Al Hamra Fort Resort',  lat: 25.68917,  lon: 55.78750 }    // 25°41'21"N 55°47'15"E
-];
-
+  /* === VRPs === */
+  const vrps = [
+    { name: 'Sham Village',          lat: 26.02806, lon: 56.08639 },
+    { name: 'Saqr Port',             lat: 25.97500, lon: 56.05667 },
+    { name: 'Al Rams',               lat: 25.88417, lon: 56.01139 },
+    { name: 'Hilton Beach Hotel',    lat: 25.81444, lon: 55.95778 },
+    { name: 'Clock Roundabout',      lat: 25.76583, lon: 55.92000 },
+    { name: 'Al Cove Rotana',        lat: 25.73750, lon: 55.88806 },
+    { name: 'Emirates Roundabout',   lat: 25.71833, lon: 55.86139 },
+    { name: 'Al Jazirah Al Hamra',   lat: 25.70694, lon: 55.80278 },
+    { name: 'Al Hamra Fort Resort',  lat: 25.68917, lon: 55.78750 }
+  ];
 
   const vrpIcon = L.divIcon({
     className: 'vrp-div-icon',
     html: '<div class="vrp-triangle"></div>',
-    iconSize: [12, 10],
-    iconAnchor: [6, 10]
+     iconSize: [18, 14],
+     iconAnchor: [9, 14]
+
   });
 
   vrps.forEach(v => {
@@ -599,3 +595,4 @@ const vrps = [
 </script>
 </body>
 </html>
+
