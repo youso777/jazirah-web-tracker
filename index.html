@@ -125,6 +125,28 @@
       margin-bottom: 2px;
     }
 
+    /* VRP marker: small cyan triangle + label */
+    .vrp-div-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .vrp-div-icon .vrp-triangle {
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-bottom: 10px solid #00ffff; /* cyan triangle */
+    }
+
+    .leaflet-tooltip.vrp-label {
+      background: rgba(0,0,0,0.7);
+      border: none;
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 4px;
+    }
+
     /* Small top-right instructions */
     #help-overlay {
       position: absolute;
@@ -199,6 +221,37 @@
     { attribution: '© Esri', maxZoom: 18 }
   ).addTo(map);
 
+const vrps = [
+  { name: 'Sham Village',          lat: 26.02806,  lon: 56.08639 },   // 26°01'41"N 56°05'11"E
+  { name: 'Saqr Port',             lat: 25.97500,  lon: 56.05667 },   // 25°58'30"N 56°03'24"E
+  { name: 'Al Rams',               lat: 25.88417,  lon: 56.01139 },   // 25°53'03"N 56°00'41"E
+  { name: 'Hilton Beach Hotel',    lat: 25.81444,  lon: 55.95778 },   // 25°48'52"N 55°57'28"E
+  { name: 'Clock Roundabout',      lat: 25.76583,  lon: 55.92000 },   // 25°45'57"N 55°55'12"E
+  { name: 'Al Cove Rotana',        lat: 25.73750,  lon: 55.88806 },   // 25°44'15"N 55°53'17"E
+  { name: 'Emirates Roundabout',   lat: 25.71833,  lon: 55.86139 },   // 25°43'06"N 55°51'41"E
+  { name: 'Al Jazirah Al Hamra',   lat: 25.70694,  lon: 55.80278 },   // 25°42'25"N 55°48'10"E
+  { name: 'Al Hamra Fort Resort',  lat: 25.68917,  lon: 55.78750 }    // 25°41'21"N 55°47'15"E
+];
+
+
+  const vrpIcon = L.divIcon({
+    className: 'vrp-div-icon',
+    html: '<div class="vrp-triangle"></div>',
+    iconSize: [12, 10],
+    iconAnchor: [6, 10]
+  });
+
+  vrps.forEach(v => {
+    const m = L.marker([v.lat, v.lon], { icon: vrpIcon }).addTo(map);
+    m.bindTooltip(v.name, {
+      permanent: true,
+      direction: 'right',
+      className: 'vrp-label',
+      offset: [8, 0]
+    });
+  });
+
+  // ========= Aircraft marker =========
   var dot = L.circleMarker(airportCoords, {
     radius: 6,
     color: 'red',
@@ -546,4 +599,3 @@
 </script>
 </body>
 </html>
-
